@@ -192,14 +192,22 @@ func (e *L2Engine) ActL2IncludeTx(from common.Address) Action {
 		}
 
 		tx := firstValidTx(t, from, e.engineApi.PendingIndices, e.eth.TxPool().ContentFrom, e.EthClient().NonceAt)
-		err := e.engineApi.IncludeTx(tx, from)
-		if errors.Is(err, engineapi.ErrNotBuildingBlock) {
-			t.InvalidAction(err.Error())
-		} else if errors.Is(err, engineapi.ErrUsesTooMuchGas) {
-			t.InvalidAction("included tx uses too much gas: %v", err)
-		} else if err != nil {
-			require.NoError(t, err, "include tx")
-		}
+		e.ActL2IncludeSpecificTx(t, tx, from)
+	}
+}
+
+func (e *L2Engine) ActL2IncludeSpecificTx(t Testing, tx *types.Transaction, from common.Address) {
+	if e.engineApi.ForcedEmpty() {
+		e.log.Info("Skipping including a specific transaction because e.L2ForceEmpty is true")
+		return
+	}
+	err := e.engineApi.IncludeTx(tx, from)
+	if errors.Is(err, engineapi.ErrNotBuildingBlock) {
+		t.InvalidAction(err.Error())
+	} else if errors.Is(err, engineapi.ErrUsesTooMuchGas) {
+		t.InvalidAction("included tx uses too much gas: %v", err)
+	} else if err != nil {
+		require.NoError(t, err, "include tx")
 	}
 }
 

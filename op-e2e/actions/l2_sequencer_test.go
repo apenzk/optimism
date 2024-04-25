@@ -70,7 +70,7 @@ func TestL2Sequencer_SequencerDrift(gt *testing.T) {
 
 	signer := types.LatestSigner(sd.L2Cfg.Config)
 	cl := engine.EthClient()
-	aliceTx := func() {
+	aliceTx := func() *types.Transaction {
 		n, err := cl.PendingNonceAt(t.Ctx(), dp.Addresses.Alice)
 		require.NoError(t, err)
 		tx := types.MustSignNewTx(dp.Secrets.Alice, signer, &types.DynamicFeeTx{
@@ -83,11 +83,12 @@ func TestL2Sequencer_SequencerDrift(gt *testing.T) {
 			Value:     e2eutils.Ether(2),
 		})
 		require.NoError(gt, cl.SendTransaction(t.Ctx(), tx))
+		return tx
 	}
 	makeL2BlockWithAliceTx := func() {
-		aliceTx()
+		tx := aliceTx()
 		sequencer.ActL2StartBlock(t)
-		engine.ActL2IncludeTx(dp.Addresses.Alice)(t) // include a test tx from alice
+		engine.ActL2IncludeSpecificTx(t, tx, dp.Addresses.Alice) // include a test tx from alice
 		sequencer.ActL2EndBlock(t)
 	}
 

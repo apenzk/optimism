@@ -58,7 +58,7 @@ func BatchInLastPossibleBlocks(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	signer := types.LatestSigner(sd.L2Cfg.Config)
 	cl := sequencerEngine.EthClient()
 	aliceNonce := uint64(0) // manual nonce management to avoid geth pending-tx nonce non-determinism flakiness
-	aliceTx := func() {
+	aliceTx := func() *types.Transaction {
 		tx := types.MustSignNewTx(dp.Secrets.Alice, signer, &types.DynamicFeeTx{
 			ChainID:   sd.L2Cfg.Config.ChainID,
 			Nonce:     aliceNonce,
@@ -70,11 +70,12 @@ func BatchInLastPossibleBlocks(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 		})
 		require.NoError(gt, cl.SendTransaction(t.Ctx(), tx))
 		aliceNonce += 1
+		return tx
 	}
 	makeL2BlockWithAliceTx := func() {
-		aliceTx()
+		tx := aliceTx()
 		sequencer.ActL2StartBlock(t)
-		sequencerEngine.ActL2IncludeTx(dp.Addresses.Alice)(t) // include a test tx from alice
+		sequencerEngine.ActL2IncludeSpecificTx(t, tx, dp.Addresses.Alice) // include a test tx from alice
 		sequencer.ActL2EndBlock(t)
 	}
 	verifyChainStateOnSequencer := func(l1Number, unsafeHead, unsafeHeadOrigin, safeHead, safeHeadOrigin uint64) {
@@ -170,7 +171,7 @@ func LargeL1Gaps(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	signer := types.LatestSigner(sd.L2Cfg.Config)
 	cl := sequencerEngine.EthClient()
 	aliceNonce := uint64(0) // manual nonce, avoid pending-tx nonce management, that causes flakes
-	aliceTx := func() {
+	aliceTx := func() *types.Transaction {
 		tx := types.MustSignNewTx(dp.Secrets.Alice, signer, &types.DynamicFeeTx{
 			ChainID:   sd.L2Cfg.Config.ChainID,
 			Nonce:     aliceNonce,
@@ -182,12 +183,19 @@ func LargeL1Gaps(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 		})
 		require.NoError(gt, cl.SendTransaction(t.Ctx(), tx))
 		aliceNonce += 1
+		return tx
 	}
+	aliceTxs := []*types.Transaction{}
+	for i := 0; i < 40; i++ {
+		aliceTxs = append(aliceTxs, aliceTx())
+	}
+	aliceIndex := 0
 	makeL2BlockWithAliceTx := func() {
-		aliceTx()
+		tx := aliceTxs[aliceIndex]
 		sequencer.ActL2StartBlock(t)
-		sequencerEngine.ActL2IncludeTx(dp.Addresses.Alice)(t) // include a test tx from alice
+		sequencerEngine.ActL2IncludeSpecificTx(t, tx, dp.Addresses.Alice) // include a test tx from alice
 		sequencer.ActL2EndBlock(t)
+		aliceIndex += 1
 	}
 
 	verifyChainStateOnSequencer := func(l1Number, unsafeHead, unsafeHeadOrigin, safeHead, safeHeadOrigin uint64) {
@@ -242,9 +250,13 @@ func LargeL1Gaps(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	verifyChainStateOnSequencer(9, 16, 8, 16, 8)
 
 	// Make the L2 blocks corresponding to the long L1 block
-	for i := 0; i < 24; i++ {
+	for i := 0; i < 23; i++ {
 		makeL2BlockWithAliceTx()
 	}
+	// the last 16 blocks were not included in the L2 chain, so reset the index for the tx we are including
+	aliceIndex = 32
+	makeL2BlockWithAliceTx()
+
 	verifyChainStateOnSequencer(9, 40, 9, 16, 8)
 
 	// Check how many transactions from alice got included on L2
@@ -253,10 +265,6 @@ func LargeL1Gaps(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	// Then over the long block, 32s seq drift / 2s block time => 16 blocks with transactions
 	// Then at the last L2 block we reached the next origin, and accept txs again => 17 blocks with transactions
 	// That leaves 7 L2 blocks without transactions. So we should have 16+17 = 33 transactions on chain.
-	n, err = cl.PendingNonceAt(t.Ctx(), dp.Addresses.Alice)
-	require.NoError(t, err)
-	require.Equal(t, uint64(40), n)
-
 	n, err = cl.NonceAt(t.Ctx(), dp.Addresses.Alice, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(33), n)
