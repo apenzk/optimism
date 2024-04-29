@@ -21,6 +21,20 @@ services:
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-stack-go:devnet
     entrypoint: ["echo", "build complete"]
 
+  da:
+    container_name: da
+    platform: linux/x86_64
+    image: "ghcr.io/rollkit/local-celestia-devnet:v0.9.1"
+    ports:
+      - "26657:26657"
+      - "26659:26659"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:26659/header/1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   l1:
     build:
       context: .
@@ -89,6 +103,8 @@ services:
       --metrics.port=7300
       --pprof.enabled
       --rpc.enable-admin
+      --da-rpc=http://da:26659
+      --namespace-id=e8e5f679bf7116cb
     ports:
       - "7545:8545"
       - "9003:9003"
@@ -129,6 +145,7 @@ services:
       OP_PROPOSER_METRICS_ENABLED: "true"
       OP_PROPOSER_ALLOW_NON_FINALIZED: "true"
       OP_PROPOSER_RPC_ENABLE_ADMIN: "true"
+      OP_PROPOSER_NAMESPACE_ID: "e8e5f679bf7116cb"
 
   op-batcher:
     depends_on:
@@ -136,6 +153,7 @@ services:
       - l1
       - l2
       - op-node
+      - da
     build:
       context: ../
       dockerfile: ./op-batcher/Dockerfile
@@ -146,10 +164,14 @@ services:
       - "6061:6060"
       - "7301:7300"
       - "6545:8545"
+    depends_on:
+      da:
+        condition: service_healthy
     environment:
       OP_BATCHER_L1_ETH_RPC: http://l1:8545
       OP_BATCHER_L2_ETH_RPC: http://l2:8545
       OP_BATCHER_ROLLUP_RPC: http://op-node:8545
+      OFFLINE_GAS_ESTIMATION: null
       OP_BATCHER_MAX_CHANNEL_DURATION: 1
       OP_BATCHER_SUB_SAFETY_MARGIN: 4 # SWS is 15, ChannelTimeout is 40
       OP_BATCHER_POLL_INTERVAL: 1s
@@ -160,6 +182,8 @@ services:
       OP_BATCHER_METRICS_ENABLED: "true"
       OP_BATCHER_RPC_ENABLE_ADMIN: "true"
       OP_BATCHER_BATCH_TYPE: 0
+      OP_BATCHER_NAMESPACE_ID: "e8e5f679bf7116cb"
+      OP_BATCHER_DA_RPC: http://da:26659
 
   artifact-server:
     depends_on:

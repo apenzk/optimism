@@ -50,6 +50,12 @@ type CLIConfig struct {
 	// MaxL1TxSize is the maximum size of a batch tx submitted to L1.
 	MaxL1TxSize uint64
 
+	// DaRpc is the HTTP provider URL for the Data Availability node.
+	DaRpc string
+
+	// NamespaceId is the id of the namespace of the Data Availability node.
+	NamespaceId string
+
 	Stopped bool
 
 	BatchType uint
