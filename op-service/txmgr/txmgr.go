@@ -219,6 +219,8 @@ func (m *SimpleTxManager) send(ctx context.Context, candidate TxCandidate) (*typ
 		m.l.Warn("unable to publish transaction to my celestia", "err", err)
 		errStrTx := fmt.Sprintf("  tx content size : %d bytes\n", len(candidate.TxData))
 		m.l.Warn(errStrTx)
+		errStrBytes := fmt.Sprintf("  namespace : %x \n", m.namespace.Bytes())
+		m.l.Warn(errStrBytes)
 		// panic("Error occurred while submitting transaction to celestia") // Add panic here
 
 		return nil, err
