@@ -214,9 +214,13 @@ func (m *SimpleTxManager) send(ctx context.Context, candidate TxCandidate) (*typ
 		defer cancel()
 	}
 
-	res, err := m.daClient.SubmitPFB(ctx, m.namespace, candidate.TxData, 20000, 700000)
+	res, err := m.daClient.SubmitPFB(ctx, m.namespace, candidate.TxData, 21000, 700000)
 	if err != nil {
-		m.l.Warn("unable to publish tx to celestia", "err", err)
+		m.l.Warn("unable to publish transaction to my celestia", "err", err)
+		errStrTx := fmt.Sprintf("  tx content size : %d bytes\n", len(candidate.TxData))
+		m.l.Warn(errStrTx)
+		// panic("Error occurred while submitting transaction to celestia") // Add panic here
+
 		return nil, err
 	}
 	fmt.Printf("res: %v\n", res)
