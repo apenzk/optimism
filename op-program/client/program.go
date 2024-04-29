@@ -71,7 +71,11 @@ func runDerivation(logger log.Logger, cfg *rollup.Config, l2Cfg *params.ChainCon
 	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend)
 
 	logger.Info("Starting derivation")
-	d := cldr.NewDriver(logger, cfg, l1Source, l2Source, l2ClaimBlockNum)
+	daCfg, err := rollup.NewDAConfig("http://localhost:26659", "e8e5f679bf7116cb")
+	if err != nil {
+		logger.Error("Failed to create DA config", "err", err)
+	}
+	d := cldr.NewDriver(logger, cfg, daCfg, l1Source, l2Source, l2ClaimBlockNum)
 	for {
 		if err = d.Step(context.Background()); errors.Is(err, io.EOF) {
 			break
