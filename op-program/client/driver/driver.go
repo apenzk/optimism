@@ -35,8 +35,12 @@ type Driver struct {
 	targetBlockNum uint64
 }
 
-func NewDriver(logger log.Logger, cfg *rollup.Config, l1Source derive.L1Fetcher, l2Source L2Source, targetBlockNum uint64) *Driver {
-	pipeline := derive.NewDerivationPipeline(logger, cfg, l1Source, l2Source, metrics.NoopMetrics, &sync.Config{})
+func NewDriver(logger log.Logger, cfg *rollup.Config, daCfg *rollup.DAConfig, l1Source derive.L1Fetcher, l2Source L2Source, targetBlockNum uint64) *Driver {
+	daCfg, err := rollup.NewDAConfig("http://localhost:26659", "e8e5f679bf7116cb")
+	if err != nil {
+		logger.Error("Failed to create DA config", "err", err)
+	}
+	pipeline := derive.NewDerivationPipeline(logger, cfg, daCfg, l1Source, l2Source, metrics.NoopMetrics, &sync.Config{})
 	pipeline.Reset()
 	return &Driver{
 		logger:         logger,
