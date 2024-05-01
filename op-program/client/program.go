@@ -71,7 +71,7 @@ func runDerivation(logger log.Logger, cfg *rollup.Config, l2Cfg *params.ChainCon
 	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend)
 
 	logger.Info("Starting derivation")
-	daCfg, err := rollup.NewDAConfig("http://localhost:26659", "e8e5f679bf7116cb")
+	daCfg, err := rollup.NewDAConfig("e8e5f679bf7116cb")
 	if err != nil {
 		logger.Error("Failed to create DA config", "err", err)
 	}

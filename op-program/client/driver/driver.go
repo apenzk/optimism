@@ -36,7 +36,7 @@ type Driver struct {
 }
 
 func NewDriver(logger log.Logger, cfg *rollup.Config, daCfg *rollup.DAConfig, l1Source derive.L1Fetcher, l2Source L2Source, targetBlockNum uint64) *Driver {
-	daCfg, err := rollup.NewDAConfig("http://localhost:26659", "e8e5f679bf7116cb")
+	daCfg, err := rollup.NewDAConfig("e8e5f679bf7116cb")
 	if err != nil {
 		logger.Error("Failed to create DA config", "err", err)
 	}

@@ -3,11 +3,16 @@ package rollup
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/boltdb/bolt"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type DAConfig struct {
+	Log         log.Logger
 	DB          *bolt.DB
 	NamespaceId *NamespaceId // Namespace ID as []byte
 }
@@ -18,7 +23,7 @@ type NamespaceId struct {
 
 // error: cannot use daCfg.Namespace (variable of type rollup.Namespace) as cnc.Namespace value in argument to daCfg.Client.NamespacedData
 
-func NewDAConfig(rpc string, namespaceIdStr string) (*DAConfig, error) {
+func NewDAConfig(namespaceIdStr string) (*DAConfig, error) {
 	var nid [8]byte
 
 	n, err := hex.DecodeString(namespaceIdStr)
@@ -36,29 +41,31 @@ func NewDAConfig(rpc string, namespaceIdStr string) (*DAConfig, error) {
 		Id: nid2,
 	}
 
+	fmt.Printf("... creating DB path.\n")
+	// Get the current directory
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	// Construct the database file path using the current directory
+	dbPath := filepath.Join(currentDir, "mydatabase.db")
+	fmt.Printf("... created DB path: %s\n", dbPath)
+
+	fmt.Printf("... creating or opening DB")
+	// Open or create the BoltDB database
+	db, err := bolt.Open(dbPath, 0600, nil)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("... created or opening DB")
+
+	_ = db
 	return &DAConfig{
-		DB:          nil,
+		DB:          db,
 		NamespaceId: namespaceId,
 	}, nil
 }
-
-// func NewDAConfig(namespaceIdStr string) (*DAConfig, error) {
-// 	// Create a BoltDB database in memory
-// 	db, err := bolt.Open(":memory:", 0600, nil)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("error creating BoltDB database: %v", err)
-// 	}
-// 	namespaceId, err := hex.DecodeString(namespaceIdStr)
-// 	if err != nil {
-// 		db.Close()
-// 		return nil, fmt.Errorf("error decoding namespace ID: %v", err)
-// 	}
-
-// 	return &DAConfig{
-// 		DB:          db,
-// 		NamespaceId: namespaceId,
-// 	}, nil
-// }
 
 // Retrieve data based on height and index
 func (da *DAConfig) GetData(height int64, index int64) ([]byte, error) {
@@ -80,6 +87,18 @@ func (da *DAConfig) GetData(height int64, index int64) ([]byte, error) {
 
 // PutData writes data to the BoltDB database
 func (da *DAConfig) PutData(height int64, index int64, data []byte) error {
+	fmt.Println("...... PutData ......")
+	key := constructKey(height, index)
+	fmt.Printf("... print 1: height: %d, index: %d, key: %v\n", height, index, key)
+	fmt.Printf("... da.NamespaceId.Id: %v\n", da.NamespaceId.Id)
+	// da.Log.Info("... log 1: height: %d, index: %d, key: %v\n", height, index, key)
+
+	// da.NamespaceId.Id = e8e5f679bf7116cb
+	if da.NamespaceId.Id == nil {
+		fmt.Printf("... error: PutData: namespace ID is nil\n")
+		return fmt.Errorf("namespace ID is nil")
+	}
+
 	// Define a function to handle the update logic
 	updateFunc := func(tx *bolt.Tx) error {
 		// Retrieve or create the bucket for the namespace
@@ -89,10 +108,8 @@ func (da *DAConfig) PutData(height int64, index int64, data []byte) error {
 		}
 		key := constructKey(height, index)
 
-		// // Convert the height to bytes to use as the key
-		// key := heightToBytes(height)
-		// // Combine the blocks into a single byte slice
-		// data := combineBlocks(blocks)
+		// print height, index and key for debugging
+		fmt.Printf("print 2:    height: %d, index: %d, key: %v\n", height, index, key)
 
 		// Store the combined data in the bucket
 		return bucket.Put(key, data)

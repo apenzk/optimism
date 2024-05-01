@@ -120,7 +120,8 @@ func NewSimpleTxManager(name string, l log.Logger, m metrics.TxMetricer, cfg CLI
 		return nil, err
 	}
 
-	confDA, err := rollup.NewDAConfig(conf.DaRpc, conf.NamespaceId)
+	confDA, err := rollup.NewDAConfig("e8e5f679bf7116cb")
+	// confDA, err := rollup.NewDAConfig(conf.NamespaceId)
 	if err != nil {
 		return nil, err
 	}

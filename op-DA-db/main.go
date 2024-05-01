@@ -63,6 +63,10 @@ type NamespaceId struct {
 func NewDAConfig(rpc string, namespaceIdStr string) (*DAConfig, error) {
 	var nid [8]byte
 
+	if namespaceIdStr == "" {
+		return &DAConfig{}, fmt.Errorf("namespace ID cannot be empty")
+	}
+
 	n, err := hex.DecodeString(namespaceIdStr)
 	if err != nil {
 		return &DAConfig{}, err
