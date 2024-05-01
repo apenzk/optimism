@@ -3,6 +3,7 @@ package txmgr
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -20,8 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/celestiaorg/go-cnc"
-
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr/metrics"
 )
 
@@ -97,9 +97,11 @@ type SimpleTxManager struct {
 	name    string
 	chainID *big.Int
 
-	daClient  *cnc.Client
-	namespace cnc.Namespace
+	cfgDA rollup.DAConfig
+	// daClient  *cnc.Client
+	// namespace cnc.Namespace
 	// namespaceId [8]byte
+	namespaceId rollup.NamespaceId
 
 	backend ETHBackend
 	l       log.Logger
@@ -118,11 +120,14 @@ func NewSimpleTxManager(name string, l log.Logger, m metrics.TxMetricer, cfg CLI
 		return nil, err
 	}
 
-	daClient, err := cnc.NewClient(cfg.DaRpc, cnc.WithTimeout(90*time.Second))
+	confDA, err := rollup.NewDAConfig(conf.DaRpc, conf.NamespaceId)
 	if err != nil {
 		return nil, err
 	}
-
+	// daClient, err := cnc.NewClient(cfg.DaRpc, cnc.WithTimeout(90*time.Second))
+	// if err != nil {
+	// 	return nil, err
+	// }
 	var nid [8]byte
 
 	if cfg.NamespaceId == "" {
@@ -133,28 +138,30 @@ func NewSimpleTxManager(name string, l log.Logger, m metrics.TxMetricer, cfg CLI
 		return nil, err
 	}
 	copy(nid[:], namespaceId)
-	namespace := &cnc.Namespace{
-		ID: namespaceId,
+	namespace := &rollup.NamespaceId{
+		Id: namespaceId,
 	}
 
-	return NewSimpleTxManagerFromConfig(name, l, m, conf, daClient, *namespace)
+	// return NewSimpleTxManagerFromConfig(name, l, m, conf, daClient, *namespace)
+	return NewSimpleTxManagerFromConfig(name, l, m, conf, *confDA, *namespace)
 }
 
 // NewSimpleTxManager initializes a new SimpleTxManager with the passed Config.
-func NewSimpleTxManagerFromConfig(name string, l log.Logger, m metrics.TxMetricer, conf Config, daClient *cnc.Client, namespace cnc.Namespace) (*SimpleTxManager, error) {
+func NewSimpleTxManagerFromConfig(name string, l log.Logger, m metrics.TxMetricer, conf Config, confDA rollup.DAConfig, namespaceId rollup.NamespaceId) (*SimpleTxManager, error) {
 	if err := conf.Check(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 	return &SimpleTxManager{
-		chainID:  conf.ChainID,
-		name:     name,
-		cfg:      conf,
-		daClient: daClient,
-		// namespaceId: nid,
-		namespace: namespace,
-		backend:   conf.Backend,
-		l:         l.New("service", name),
-		metr:      m,
+		chainID: conf.ChainID,
+		name:    name,
+		cfg:     conf,
+		cfgDA:   confDA,
+		// daClient: daClient,
+		namespaceId: namespaceId,
+		// namespace: namespace,
+		backend: conf.Backend,
+		l:       l.New("service", name),
+		metr:    m,
 	}, nil
 }
 
@@ -214,23 +221,31 @@ func (m *SimpleTxManager) send(ctx context.Context, candidate TxCandidate) (*typ
 		defer cancel()
 	}
 
-	res, err := m.daClient.SubmitPFB(ctx, m.namespace, candidate.TxData, 21000, 700000)
+	// previously received height from SubmitPFB
+	hash := sha256.Sum256(candidate.TxData)
+	// use first 8 bytes as the key "height" to match int64 byte size
+	height := int64(binary.LittleEndian.Uint64(hash[:8]))
+	index := int64(0)
+
+	// res, err := m.daClient.SubmitPFB(ctx, m.namespace, candidate.TxData, 21000, 700000)
+	err := m.cfgDA.PutData(height, index, candidate.TxData)
+	// res, err := m.cfgDA.PutData(height, index, candidate.TxData)
 	if err != nil {
 		m.l.Warn("unable to publish transaction to my celestia", "err", err)
 		errStrTx := fmt.Sprintf("  tx content size : %d bytes\n", len(candidate.TxData))
 		m.l.Warn(errStrTx)
-		errStrBytes := fmt.Sprintf("  namespace : %x \n", m.namespace.Bytes())
+		errStrBytes := fmt.Sprintf("  namespace : %x \n", m.cfgDA.NamespaceId)
 		m.l.Warn(errStrBytes)
 		// panic("Error occurred while submitting transaction to celestia") // Add panic here
 
 		return nil, err
 	}
-	fmt.Printf("res: %v\n", res)
+	// fmt.Printf("res: %v\n", res)
 
-	height := res.Height
+	// height := res.Height
 
 	// FIXME: needs to be tx index / share index?
-	index := uint32(0) // res.Logs[0].MsgIndex
+	// index := uint32(0) // res.Logs[0].MsgIndex
 
 	// DA pointer serialization format
 	// | -------------------------|
