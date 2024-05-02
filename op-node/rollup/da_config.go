@@ -51,10 +51,10 @@ func NewDAConfig(namespaceIdStr string) (*DAConfig, error) {
 
 	// Create the necessary table if it doesn't exist
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS data (
-		height INTEGER,
-		index INTEGER,
+		key1 INTEGER,
+		key2 INTEGER,
 		data BLOB,
-		PRIMARY KEY (height, index)
+		PRIMARY KEY (key1, key2)
 	);`)
 	if err != nil {
 		return nil, err
@@ -70,8 +70,8 @@ func NewDAConfig(namespaceIdStr string) (*DAConfig, error) {
 func (da *DAConfig) GetData(height int64, index int64) ([]byte, error) {
 	var blockData []byte
 	fmt.Printf("... GetData: height: %d, index: %d\n", height, index)
-	row := da.DB.QueryRow("SELECT data FROM data WHERE height = ? AND index = ?", height, index)
-	fmt.Printf("... GetData: SELECT data FROM data WHERE height = %d AND index = %d\n", height, index)
+	row := da.DB.QueryRow("SELECT data FROM data WHERE key1 = ? AND key2 = ?", height, index)
+	fmt.Printf("... GetData: SELECT data FROM data WHERE key1 = %d AND key2 = %d\n", height, index)
 	fmt.Printf("... GetData: row: %v\n", row)
 
 	err := row.Scan(&blockData)
@@ -85,6 +85,6 @@ func (da *DAConfig) GetData(height int64, index int64) ([]byte, error) {
 // PutData writes data to the SQLite database
 func (da *DAConfig) PutData(height int64, index int64, data []byte) error {
 	fmt.Printf("... SetData: height: %d, index: %d\n", height, index)
-	_, err := da.DB.Exec("INSERT OR REPLACE INTO data (height, index, data) VALUES (?, ?, ?)", height, index, data)
+	_, err := da.DB.Exec("INSERT OR REPLACE INTO data (key1, key2, data) VALUES (?, ?, ?)", height, index, data)
 	return err
 }

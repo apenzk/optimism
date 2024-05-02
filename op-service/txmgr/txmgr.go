@@ -232,12 +232,11 @@ func (m *SimpleTxManager) send(ctx context.Context, candidate TxCandidate) (*typ
 	err := m.cfgDA.PutData(height, index, candidate.TxData)
 	// res, err := m.cfgDA.PutData(height, index, candidate.TxData)
 	if err != nil {
-		m.l.Warn("unable to publish transaction to my celestia", "err", err)
+		m.l.Warn("unable to publish transaction to DA", "err", err)
 		errStrTx := fmt.Sprintf("  tx content size : %d bytes\n", len(candidate.TxData))
 		m.l.Warn(errStrTx)
 		errStrBytes := fmt.Sprintf("  namespace : %x \n", m.cfgDA.NamespaceId)
 		m.l.Warn(errStrBytes)
-		// panic("Error occurred while submitting transaction to celestia") // Add panic here
 
 		return nil, err
 	}
