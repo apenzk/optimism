@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -44,20 +44,29 @@ func NewDAConfig(namespaceIdStr string) (*DAConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// Construct the database directory path using the current directory
 	dbPath := filepath.Join(currentDir, "mydatabase")
+	// Check if the directory exists, create it if not
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		fmt.Printf("DB path does not exist. Creating directory: %s\n", dbPath)
+		err := os.MkdirAll(dbPath, 0755)
+		if err != nil {
+			fmt.Printf("Failed to create directory: %v\n", err)
+		}
+	}
 	fmt.Printf("... created DB path: %s\n", dbPath)
 
-	fmt.Printf("... creating or opening DB")
+	fmt.Printf("... creating or opening DB...\n")
 	// Open or create the BadgerDB database
-	opts := badger.DefaultOptions(dbPath)
-	db, err := badger.Open(opts)
+	// opts := badger.DefaultOptions(dbPath)
+	db, err := badger.Open(badger.DefaultOptions(dbPath).WithVerifyValueChecksum(true))
 	if err != nil {
+		fmt.Printf("... error: creating or opening DB...\n")
 		return nil, err
 	}
-	fmt.Printf("... created or opening DB")
+	fmt.Printf("... created or opened DB\n")
 
+	fmt.Printf("... returning DAConfig\n")
 	return &DAConfig{
 		DB:          db,
 		NamespaceId: namespaceId,
