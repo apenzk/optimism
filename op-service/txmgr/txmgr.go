@@ -97,10 +97,7 @@ type SimpleTxManager struct {
 	name    string
 	chainID *big.Int
 
-	cfgDA rollup.DAConfig
-	// daClient  *cnc.Client
-	// namespace cnc.Namespace
-	// namespaceId [8]byte
+	cfgDA       rollup.DAConfig
 	namespaceId rollup.NamespaceId
 
 	backend ETHBackend
@@ -121,14 +118,9 @@ func NewSimpleTxManager(name string, l log.Logger, m metrics.TxMetricer, cfg CLI
 	}
 
 	confDA, err := rollup.NewDAConfig("e8e5f679bf7116cb")
-	// confDA, err := rollup.NewDAConfig(conf.NamespaceId)
 	if err != nil {
 		return nil, err
 	}
-	// daClient, err := cnc.NewClient(cfg.DaRpc, cnc.WithTimeout(90*time.Second))
-	// if err != nil {
-	// 	return nil, err
-	// }
 	var nid [8]byte
 
 	if cfg.NamespaceId == "" {
@@ -143,7 +135,6 @@ func NewSimpleTxManager(name string, l log.Logger, m metrics.TxMetricer, cfg CLI
 		Id: namespaceId,
 	}
 
-	// return NewSimpleTxManagerFromConfig(name, l, m, conf, daClient, *namespace)
 	return NewSimpleTxManagerFromConfig(name, l, m, conf, *confDA, *namespace)
 }
 
@@ -153,16 +144,14 @@ func NewSimpleTxManagerFromConfig(name string, l log.Logger, m metrics.TxMetrice
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 	return &SimpleTxManager{
-		chainID: conf.ChainID,
-		name:    name,
-		cfg:     conf,
-		cfgDA:   confDA,
-		// daClient: daClient,
+		chainID:     conf.ChainID,
+		name:        name,
+		cfg:         conf,
+		cfgDA:       confDA,
 		namespaceId: namespaceId,
-		// namespace: namespace,
-		backend: conf.Backend,
-		l:       l.New("service", name),
-		metr:    m,
+		backend:     conf.Backend,
+		l:           l.New("service", name),
+		metr:        m,
 	}, nil
 }
 
@@ -228,9 +217,7 @@ func (m *SimpleTxManager) send(ctx context.Context, candidate TxCandidate) (*typ
 	height := int64(binary.LittleEndian.Uint64(hash[:8]))
 	index := int64(0)
 
-	// res, err := m.daClient.SubmitPFB(ctx, m.namespace, candidate.TxData, 21000, 700000)
 	err := m.cfgDA.PutData(height, index, candidate.TxData)
-	// res, err := m.cfgDA.PutData(height, index, candidate.TxData)
 	if err != nil {
 		m.l.Warn("unable to publish transaction to DA", "err", err)
 		errStrTx := fmt.Sprintf("  tx content size : %d bytes\n", len(candidate.TxData))
@@ -240,18 +227,6 @@ func (m *SimpleTxManager) send(ctx context.Context, candidate TxCandidate) (*typ
 
 		return nil, err
 	}
-	// fmt.Printf("res: %v\n", res)
-
-	// height := res.Height
-
-	// FIXME: needs to be tx index / share index?
-	// index := uint32(0) // res.Logs[0].MsgIndex
-
-	// DA pointer serialization format
-	// | -------------------------|
-	// | 8 bytes       | 4 bytes  |
-	// | block height | tx index  |
-	// | -------------------------|
 
 	buf := new(bytes.Buffer)
 	err = binary.Write(buf, binary.BigEndian, height)
@@ -267,13 +242,6 @@ func (m *SimpleTxManager) send(ctx context.Context, candidate TxCandidate) (*typ
 	tx, err := m.craftTx(ctx, TxCandidate{TxData: serialized, To: candidate.To, GasLimit: candidate.GasLimit})
 	fmt.Printf("TxData: %v\n", serialized)
 
-	// tx, err := retry.Do(ctx, 30, retry.Fixed(2*time.Second), func() (*types.Transaction, error) {
-	// 	tx, err := m.craftTx(ctx, candidate)
-	// 	if err != nil {
-	// 		m.l.Warn("Failed to create a transaction, will retry", "err", err)
-	// 	}
-	// 	return tx, err
-	// })
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the tx: %w", err)
 	}

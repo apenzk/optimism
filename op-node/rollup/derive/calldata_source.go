@@ -130,7 +130,6 @@ func DataFromEVMTransactions(config *rollup.Config, daCfg *rollup.DAConfig, batc
 				log.Warn("unable to decode data pointer", "index", j, "err", err)
 				continue
 			}
-			// data, err := daCfg.Client.NamespacedData(context.Background(), daCfg.Namespace, uint64(height))
 			data, err := daCfg.GetData(height, index)
 
 			if err != nil {
