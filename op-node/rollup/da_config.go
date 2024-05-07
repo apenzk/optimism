@@ -36,14 +36,6 @@ func NewDAConfig(namespaceIdStr string) (*DAConfig, error) {
 		Id: nid2,
 	}
 
-	// // Get the current directory
-	// currentDir, err := os.Getwd()
-	// if err != nil {
-	// 	return &DAConfig{}, err
-	// }
-	// Construct the database file path using the current directory
-	// dbPath := filepath.Join(currentDir, "mydatabase2.db")
-	// we want an absolute path instead that does not depend on the current directory
 	dbPath := filepath.Join("/tmp", "mydatabase.db")
 
 	// Open the SQLite database
