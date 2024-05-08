@@ -20,7 +20,7 @@ contract SafeCall_Test is CommonTest {
         // don't call the console
         vm.assume(to != address(0x000000000000000000636F6e736F6c652e6c6f67));
         // don't call the create2 deployer
-        vm.assume(to != address(0x4e59b44847b379578588920cA78FbF26c0B4956C));
+        vm.assume(to != address(0x66C0D9849EddD7B215FE82Fb4680ca598F7bff20));
         // don't call the ffi interface
         vm.assume(to != address(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
 
@@ -55,7 +55,7 @@ contract SafeCall_Test is CommonTest {
         // don't call the console
         vm.assume(to != address(0x000000000000000000636F6e736F6c652e6c6f67));
         // don't call the create2 deployer
-        vm.assume(to != address(0x4e59b44847b379578588920cA78FbF26c0B4956C));
+        vm.assume(to != address(0x66C0D9849EddD7B215FE82Fb4680ca598F7bff20));
         // don't call the ffi interface
         vm.assume(to != address(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
 
@@ -98,7 +98,7 @@ contract SafeCall_Test is CommonTest {
         // don't call the console
         vm.assume(to != address(0x000000000000000000636F6e736F6c652e6c6f67));
         // don't call the create2 deployer
-        vm.assume(to != address(0x4e59b44847b379578588920cA78FbF26c0B4956C));
+        vm.assume(to != address(0x66C0D9849EddD7B215FE82Fb4680ca598F7bff20));
         // don't call the FFIInterface
         vm.assume(to != address(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
 
